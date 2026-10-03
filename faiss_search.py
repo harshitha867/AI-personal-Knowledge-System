@@ -25,9 +25,11 @@ def search_faiss(
 
     query_embedding = model.encode([query])
 
+    k = min(top_k, len(chunks))
+
     distances, indices = index.search(
         np.array(query_embedding).astype("float32"),
-        top_k
+        k
     )
 
     results = []
