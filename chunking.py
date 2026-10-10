@@ -1,22 +1,28 @@
-def chunk_text(text, chunk_size=200, overlap=50):
+def chunk_text(pages, chunk_size=200, overlap=50):
     """
-    Split text into overlapping chunks.
+    Split page-wise text into overlapping chunks
+    while preserving the source page number.
     """
-
-    words = text.split()
 
     chunks = []
 
-    start = 0
+    for page_number, text in pages:
 
-    while start < len(words):
+        words = text.split()
 
-        end = start + chunk_size
+        start = 0
 
-        chunk = " ".join(words[start:end])
+        while start < len(words):
 
-        chunks.append(chunk)
+            end = start + chunk_size
 
-        start += chunk_size - overlap
+            chunk = " ".join(words[start:end])
+
+            chunks.append({
+                "text": chunk,
+                "page": page_number
+            })
+
+            start += chunk_size - overlap
 
     return chunks

@@ -1,6 +1,7 @@
 import streamlit as st
 import fitz
 import time
+import os
 
 from extract import extract_text_from_pdf
 from chunking import chunk_text
@@ -27,11 +28,13 @@ st.set_page_config(
 @st.cache_resource
 def process_pdf(pdf_path):
 
-    text = extract_text_from_pdf(pdf_path)
+    pages = extract_text_from_pdf(pdf_path)
 
-    chunks = chunk_text(text)
+    chunks = chunk_text(pages)
 
-    embeddings = generate_embeddings(chunks)
+    texts = [chunk["text"] for chunk in chunks]
+
+    embeddings = generate_embeddings(texts)
 
     faiss_index = create_faiss_index(embeddings)
 
@@ -59,6 +62,7 @@ with st.sidebar:
 - PDF Upload
 - Semantic Search
 - Vector Retrieval
+- Page-Aware Results
 - Analytics Dashboard
 """)
 
@@ -83,6 +87,8 @@ st.markdown("""
 # -------------------------------------------------
 # FILE UPLOAD
 # -------------------------------------------------
+
+os.makedirs("uploads", exist_ok=True)
 
 uploaded_file = st.file_uploader(
     "Upload a PDF",
@@ -181,9 +187,12 @@ if uploaded_file:
 
             confidence = (1 / (1 + distance)) * 100
 
+            text = result["text"]
+            page = result["page"]
+
             st.markdown(f"### 📄 Result {i}")
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.metric(
@@ -197,16 +206,22 @@ if uploaded_file:
                     f"{confidence:.2f}%"
                 )
 
+            with col3:
+                st.metric(
+                    "📖 Source Page",
+                    page
+                )
+
             st.progress(
                 float(min(confidence / 100, 1.0))
             )
 
-            preview = result[:300] + "..."
+            preview = text[:300] + "..."
 
             st.info(preview)
 
             with st.expander("📖 View Full Result"):
-                st.write(result)
+                st.write(text)
 
             st.divider()
 

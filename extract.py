@@ -5,22 +5,27 @@ from search import semantic_search
 from faiss_search import create_faiss_index
 from faiss_search import search_faiss
 
+
 def extract_text_from_pdf(pdf_path):
     """
-    Extract text from a PDF file.
+    Extract text from a PDF file while preserving page numbers.
     """
 
-    text = ""
+    pages = []
 
     try:
         doc = fitz.open(pdf_path)
 
-        for page in doc:
-            text += page.get_text()
+        for page_number, page in enumerate(doc, start=1):
+
+            text = page.get_text()
+
+            if text.strip():
+                pages.append((page_number, text))
 
         doc.close()
 
-        return text
+        return pages
 
     except Exception as e:
         print(f"Error extracting PDF: {e}")
@@ -31,37 +36,44 @@ if __name__ == "__main__":
 
     pdf_path = "uploads/sample.pdf"
 
-    extracted_text = extract_text_from_pdf(pdf_path)
+    pages = extract_text_from_pdf(pdf_path)
 
-    if extracted_text:
+    if pages:
 
         # Create chunks
-        chunks = chunk_text(extracted_text)
+        chunks = chunk_text(pages)
 
         # Generate embeddings
-        embeddings = generate_embeddings(chunks)
+        texts = [chunk["text"] for chunk in chunks]
+
+        embeddings = generate_embeddings(texts)
+
         faiss_index = create_faiss_index(embeddings)
 
+        print(f"\nTotal Pages: {len(pages)}")
         print(f"\nTotal Chunks: {len(chunks)}")
 
         print("\nEmbedding Shape:")
         print(embeddings.shape)
 
         print("\nFirst Chunk:\n")
-        print(chunks[0])
+        print(chunks[0]["text"])
+
+        print("\nPage of First Chunk:")
+        print(chunks[0]["page"])
 
         print("\nWords in First Chunk:")
-        print(len(chunks[0].split()))
+        print(len(chunks[0]["text"].split()))
 
         print("\nWords in Last Chunk:")
-        print(len(chunks[-1].split()))
+        print(len(chunks[-1]["text"].split()))
 
-                # Semantic Search Test
+        # Semantic Search Test
         query = "What is normal distribution?"
 
         results = semantic_search(
             query,
-            chunks,
+            texts,
             embeddings,
             top_k=3
         )
@@ -88,7 +100,7 @@ if __name__ == "__main__":
 
         faiss_results = search_faiss(
             query,
-            chunks,
+            texts,
             faiss_index,
             top_k=3
         )
